@@ -181,6 +181,27 @@ pub async fn get_chat_history(
     Ok(Json(messages))
 }
 
+// REST: Delete Chat History
+pub async fn delete_chat_history(
+    Path((user1, user2)): Path<(Uuid, Uuid)>,
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let _ = sqlx::query(
+        r#"
+        DELETE FROM chat_messages 
+        WHERE (sender_id = $1 AND receiver_id = $2) 
+           OR (sender_id = $2 AND receiver_id = $1)
+        "#
+    )
+    .bind(user1)
+    .bind(user2)
+    .execute(&state.pool)
+    .await
+    .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok((StatusCode::OK, "Chat history deleted".to_string()))
+}
+
 // WebSocket handler
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
@@ -218,13 +239,15 @@ async fn handle_socket(socket: WebSocket, user_id: String, state: AppState) {
                 let pool = &state_clone.pool;
                 let sender_uuid = Uuid::parse_str(&msg.sender_id).unwrap_or_default();
                 let receiver_uuid = Uuid::parse_str(&msg.receiver_id).unwrap_or_default();
+                let msg_uuid = Uuid::parse_str(&msg.id).unwrap_or_else(|_| Uuid::new_v4());
                 
                 let _ = sqlx::query(
                     r#"
-                    INSERT INTO chat_messages (sender_id, receiver_id, content, message_type)
-                    VALUES ($1, $2, $3, $4)
+                    INSERT INTO chat_messages (id, sender_id, receiver_id, content, message_type)
+                    VALUES ($1, $2, $3, $4, $5)
                     "#
                 )
+                .bind(msg_uuid)
                 .bind(sender_uuid)
                 .bind(receiver_uuid)
                 .bind(msg.content.clone())

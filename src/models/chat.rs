@@ -35,6 +35,7 @@ pub struct AcceptFriendReq {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WsMessage {
+    pub id: String,
     pub sender_id: String,
     pub receiver_id: String,
     pub content: String,

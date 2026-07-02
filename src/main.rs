@@ -80,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/friends/accept", post(api::chat::accept_friend))
         .route("/api/friends/:id", get(api::chat::get_friends))
         .route("/api/friends/search/:code", get(api::chat::search_friend))
-        .route("/api/chat/history/:user1/:user2", get(api::chat::get_chat_history))
+        .route("/api/chat/history/:user1/:user2", get(api::chat::get_chat_history).delete(api::chat::delete_chat_history))
         .route("/api/ws/chat/:user_id", get(api::chat::ws_handler))
         // Avatars Routes
         .route("/api/avatars", get(api::avatars::get_avatars))
