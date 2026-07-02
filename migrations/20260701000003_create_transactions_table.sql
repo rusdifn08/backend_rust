@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    date VARCHAR(100) NOT NULL,
+    amount DOUBLE PRECISION NOT NULL,
+    icon VARCHAR(100) NOT NULL,
+    color VARCHAR(20) NOT NULL,
+    is_expense BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

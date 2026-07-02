@@ -1,0 +1,39 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2021"
+default-run = "backend"
+description = "Backend API for Mobile Productivity App"
+
+[dependencies]
+# Web Framework
+axum = { version = "0.7", features = ["ws", "multipart"] }
+tokio = { version = "1.36", features = ["full"] }
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+futures = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "macros"] }
+
+# Environment & Config
+dotenvy = "0.15"
+
+# Utilities
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1.8", features = ["serde", "v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+jsonwebtoken = "9.3"
+argon2 = "0.5"
+rand = "0.8"
+tokio-stream = { version = "0.1.18", features = ["sync"] }
+
+[profile.release]
+opt-level = "s"       # Optimize for binary size
+lto = true            # Enable Link Time Optimization
+codegen-units = 1     # Maximize size reduction
+panic = "abort"       # Remove panic unwinding overhead

@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS habits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    time VARCHAR(50) NOT NULL,
+    icon VARCHAR(100) NOT NULL,
+    color VARCHAR(20) NOT NULL,
+    streak INT NOT NULL DEFAULT 0,
+    category VARCHAR(50) NOT NULL,
+    is_completed BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
