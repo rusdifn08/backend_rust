@@ -12,3 +12,4 @@ pub mod social;
 pub mod weekly;
 pub mod analytics;
 pub mod shop;
+pub mod system;

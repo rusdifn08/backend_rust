@@ -112,6 +112,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/shop/inventory/:user_id", get(api::shop::get_inventory))
         .route("/api/shop/buy", post(api::shop::buy_item))
         .route("/api/shop/equip/:inventory_id", post(api::shop::equip_item))
+        
+        // System OTA
+        .route("/api/system/ota/latest", get(api::system::get_latest_ota))
         // Serve static assets from src/Assets
         .route("/api/assets/:filename", get(|axum::extract::Path(filename): axum::extract::Path<String>| async move {
             let path = format!("src/Assets/{}", filename);
