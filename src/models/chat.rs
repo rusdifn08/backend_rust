@@ -19,6 +19,7 @@ pub struct ChatMessage {
     pub content: String,
     pub message_type: String,
     pub created_at: DateTime<Utc>,
+    pub is_read: bool,
 }
 
 #[derive(Debug, Deserialize)]

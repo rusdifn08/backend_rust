@@ -249,30 +249,48 @@ async fn handle_socket(socket: WebSocket, user_id: String, state: AppState) {
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
             if let Ok(msg) = serde_json::from_str::<WsMessage>(&text) {
-                // Save to DB
                 let pool = &state_clone.pool;
-                let sender_uuid = Uuid::parse_str(&msg.sender_id).unwrap_or_default();
-                let receiver_uuid = Uuid::parse_str(&msg.receiver_id).unwrap_or_default();
-                let msg_uuid = Uuid::parse_str(&msg.id).unwrap_or_else(|_| Uuid::new_v4());
                 
-                let _ = sqlx::query(
-                    r#"
-                    INSERT INTO chat_messages (id, sender_id, receiver_id, content, message_type)
-                    VALUES ($1, $2, $3, $4, $5)
-                    "#
-                )
-                .bind(msg_uuid)
-                .bind(sender_uuid)
-                .bind(receiver_uuid)
-                .bind(msg.content.clone())
-                .bind(msg.message_type.clone())
-                .execute(pool)
-                .await;
+                if msg.message_type == "read_receipt" {
+                    // msg.content contains the ID of the message that was read
+                    // We need to mark it as read in DB and notify the original sender
+                    if let Ok(msg_uuid) = Uuid::parse_str(&msg.content) {
+                        let _ = sqlx::query("UPDATE chat_messages SET is_read = TRUE WHERE id = $1")
+                            .bind(msg_uuid)
+                            .execute(pool)
+                            .await;
+                    }
+                    
+                    // Send to the original sender (who is msg.receiver_id in this context)
+                    let chat_state = state_clone.chat_state.lock().await;
+                    if let Some(receiver_tx) = chat_state.get(&msg.receiver_id) {
+                        let _ = receiver_tx.send(msg);
+                    }
+                } else {
+                    // Normal message
+                    let sender_uuid = Uuid::parse_str(&msg.sender_id).unwrap_or_default();
+                    let receiver_uuid = Uuid::parse_str(&msg.receiver_id).unwrap_or_default();
+                    let msg_uuid = Uuid::parse_str(&msg.id).unwrap_or_else(|_| Uuid::new_v4());
+                    
+                    let _ = sqlx::query(
+                        r#"
+                        INSERT INTO chat_messages (id, sender_id, receiver_id, content, message_type, is_read)
+                        VALUES ($1, $2, $3, $4, $5, FALSE)
+                        "#
+                    )
+                    .bind(msg_uuid)
+                    .bind(sender_uuid)
+                    .bind(receiver_uuid)
+                    .bind(msg.content.clone())
+                    .bind(msg.message_type.clone())
+                    .execute(pool)
+                    .await;
 
-                // Send to receiver if online
-                let chat_state = state_clone.chat_state.lock().await;
-                if let Some(receiver_tx) = chat_state.get(&msg.receiver_id) {
-                    let _ = receiver_tx.send(msg);
+                    // Send to receiver if online
+                    let chat_state = state_clone.chat_state.lock().await;
+                    if let Some(receiver_tx) = chat_state.get(&msg.receiver_id) {
+                        let _ = receiver_tx.send(msg);
+                    }
                 }
             }
         }
