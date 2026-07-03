@@ -3,8 +3,12 @@ use sqlx::PgPool;
 use uuid::Uuid;
 use crate::models::note::{Note, CreateNoteReq};
 
-pub async fn get_notes(State(pool): State<PgPool>) -> Result<Json<Vec<Note>>, (StatusCode, String)> {
-    let notes = sqlx::query_as::<_, Note>("SELECT * FROM notes ORDER BY created_at DESC")
+pub async fn get_notes(
+    Path(user_id): Path<Uuid>,
+    State(pool): State<PgPool>,
+) -> Result<Json<Vec<Note>>, (StatusCode, String)> {
+    let notes = sqlx::query_as::<_, Note>("SELECT * FROM notes WHERE user_id = $1 ORDER BY created_at DESC")
+        .bind(user_id)
         .fetch_all(&pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -15,18 +19,21 @@ pub async fn create_note(
     State(pool): State<PgPool>,
     Json(req): Json<CreateNoteReq>,
 ) -> Result<(StatusCode, Json<Note>), (StatusCode, String)> {
+    let user_uuid = Uuid::parse_str(&req.user_id).map_err(|_| (StatusCode::BAD_REQUEST, "Invalid UUID".into()))?;
     let note = sqlx::query_as::<_, Note>(
         r#"
-        INSERT INTO notes (title, content, date, tag, color) 
-        VALUES ($1, $2, $3, $4, $5) 
+        INSERT INTO notes (user_id, title, content, date, tag, color, deadline) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7) 
         RETURNING *
         "#
     )
+    .bind(user_uuid)
     .bind(req.title)
     .bind(req.content)
     .bind(req.date)
     .bind(req.tag)
     .bind(req.color)
+    .bind(req.deadline)
     .fetch_one(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;

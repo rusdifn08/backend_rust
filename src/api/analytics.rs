@@ -155,3 +155,55 @@ pub async fn stream_analytics(
     
     Sse::new(combined_stream).keep_alive(axum::response::sse::KeepAlive::new())
 }
+
+#[derive(Serialize)]
+pub struct KpiSlaResponse {
+    pub todo_completion_rate: f64,
+    pub habit_completion_rate: f64,
+}
+
+pub async fn get_kpi(
+    State(state): State<crate::api::chat::AppState>,
+    axum::extract::Path(user_id): axum::extract::Path<uuid::Uuid>,
+) -> impl IntoResponse {
+    // Calculate Todo Completion Rate
+    let todo_record = sqlx::query!(
+        "SELECT COUNT(*) as total, SUM(CASE WHEN is_completed THEN 1 ELSE 0 END) as completed FROM todos WHERE user_id = $1",
+        user_id
+    )
+    .fetch_one(&state.pool)
+    .await;
+
+    let todo_rate = match todo_record {
+        Ok(r) => {
+            let total = r.total.unwrap_or(0) as f64;
+            let completed = r.completed.unwrap_or(0) as f64;
+            if total > 0.0 { completed / total } else { 0.0 }
+        },
+        Err(_) => 0.0,
+    };
+
+    // Calculate Habit Completion Rate (by streaks)
+    let habit_record = sqlx::query!(
+        "SELECT COUNT(*) as total, SUM(CASE WHEN streak > 0 THEN 1 ELSE 0 END) as active FROM habits WHERE user_id = $1",
+        user_id
+    )
+    .fetch_one(&state.pool)
+    .await;
+
+    let habit_rate = match habit_record {
+        Ok(r) => {
+            let total = r.total.unwrap_or(0) as f64;
+            let active = r.active.unwrap_or(0) as f64;
+            if total > 0.0 { active / total } else { 0.0 }
+        },
+        Err(_) => 0.0,
+    };
+
+    let response = KpiSlaResponse {
+        todo_completion_rate: todo_rate,
+        habit_completion_rate: habit_rate,
+    };
+
+    (StatusCode::OK, axum::Json(response)).into_response()
+}

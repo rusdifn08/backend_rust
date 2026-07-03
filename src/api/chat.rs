@@ -202,6 +202,20 @@ pub async fn delete_chat_history(
     Ok((StatusCode::OK, "Chat history deleted".to_string()))
 }
 
+// REST: Delete Single Message
+pub async fn delete_single_message(
+    Path(message_id): Path<Uuid>,
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let _ = sqlx::query("DELETE FROM chat_messages WHERE id = $1")
+        .bind(message_id)
+        .execute(&state.pool)
+        .await
+        .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok((StatusCode::OK, "Message deleted".to_string()))
+}
+
 // WebSocket handler
 pub async fn ws_handler(
     ws: WebSocketUpgrade,

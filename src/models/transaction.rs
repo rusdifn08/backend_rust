@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Transaction {
     pub id: Uuid,
+    pub user_id: Option<Uuid>,
     pub title: String,
     pub date: String,
     pub amount: f64,
@@ -16,6 +17,7 @@ pub struct Transaction {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateTransactionReq {
+    pub user_id: Option<String>,
     pub title: String,
     pub date: String,
     pub amount: f64,

@@ -31,6 +31,7 @@ jsonwebtoken = "9.3"
 argon2 = "0.5"
 rand = "0.8"
 tokio-stream = { version = "0.1.18", features = ["sync"] }
+image = "0.25.10"
 
 [profile.release]
 opt-level = "s"       # Optimize for binary size

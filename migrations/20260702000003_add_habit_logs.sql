@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS habit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    habit_id UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+    user_id UUID,
+    note VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE habits ADD COLUMN IF NOT EXISTS description VARCHAR(255);
+ALTER TABLE habits ADD COLUMN IF NOT EXISTS frequency VARCHAR(50) DEFAULT 'daily';

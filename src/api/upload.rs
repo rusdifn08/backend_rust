@@ -43,6 +43,20 @@ pub async fn upload_file(
         return Err((StatusCode::BAD_REQUEST, "No file uploaded".to_string()));
     }
 
+    // Attempt to compress image if it's an image
+    if mime_type.starts_with("image/") {
+        if let Ok(img) = image::load_from_memory(&data_bytes) {
+            // Resize to max 360x360 maintaining aspect ratio
+            let resized = img.resize(360, 360, image::imageops::FilterType::Lanczos3);
+            let mut buffer = std::io::Cursor::new(Vec::new());
+            // Write as JPEG
+            if resized.write_to(&mut buffer, image::ImageFormat::Jpeg).is_ok() {
+                data_bytes = buffer.into_inner();
+                mime_type = "image/jpeg".to_string();
+            }
+        }
+    }
+
     let id = Uuid::new_v4();
 
     sqlx::query(

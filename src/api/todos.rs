@@ -3,8 +3,12 @@ use sqlx::PgPool;
 use uuid::Uuid;
 use crate::models::todo::{Todo, CreateTodoReq};
 
-pub async fn get_todos(State(pool): State<PgPool>) -> Result<Json<Vec<Todo>>, (StatusCode, String)> {
-    let todos = sqlx::query_as::<_, Todo>("SELECT * FROM todos ORDER BY created_at DESC")
+pub async fn get_todos(
+    Path(user_id): Path<Uuid>,
+    State(pool): State<PgPool>,
+) -> Result<Json<Vec<Todo>>, (StatusCode, String)> {
+    let todos = sqlx::query_as::<_, Todo>("SELECT * FROM todos WHERE user_id = $1 ORDER BY created_at DESC")
+        .bind(user_id)
         .fetch_all(&pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -15,17 +19,20 @@ pub async fn create_todo(
     State(pool): State<PgPool>,
     Json(req): Json<CreateTodoReq>,
 ) -> Result<(StatusCode, Json<Todo>), (StatusCode, String)> {
+    let user_uuid = Uuid::parse_str(&req.user_id).map_err(|_| (StatusCode::BAD_REQUEST, "Invalid UUID".into()))?;
     let todo = sqlx::query_as::<_, Todo>(
         r#"
-        INSERT INTO todos (title, subtitle, category, color) 
-        VALUES ($1, $2, $3, $4) 
+        INSERT INTO todos (user_id, title, subtitle, category, color, icon) 
+        VALUES ($1, $2, $3, $4, $5, $6) 
         RETURNING *
         "#
     )
+    .bind(user_uuid)
     .bind(req.title)
     .bind(req.subtitle)
     .bind(req.category)
     .bind(req.color)
+    .bind(req.icon)
     .fetch_one(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -49,6 +56,21 @@ pub async fn toggle_todo(
     .fetch_one(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if todo.is_completed {
+        if let Some(uid) = todo.user_id {
+            // Gamification Reward
+            let _ = crate::services::gamification_service::GamificationService::add_reward(
+                &pool, uid, 10, 5 // 10 EXP, 5 Coins
+            ).await;
+            
+            // Social Feed
+            let desc = format!("Completed a task: {}", todo.title);
+            let _ = crate::repositories::social_repo::SocialRepo::create_activity(
+                &pool, uid, "TODO_COMPLETED", &desc
+            ).await;
+        }
+    }
 
     Ok(Json(todo))
 }

@@ -133,6 +133,22 @@ pub async fn update_profile(
     State(pool): State<PgPool>,
     Json(payload): Json<UpdateProfileRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    
+    // Delete old avatar if it's changing and was locally uploaded
+    if let Ok(Some(old_user)) = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1").bind(id).fetch_optional(&pool).await {
+        if let Some(old_url) = old_user.avatar_url {
+            if let Some(new_url) = &payload.avatar_url {
+                if &old_url != new_url && old_url.contains("/api/files/") {
+                    if let Some(file_id_str) = old_url.split("/api/files/").last() {
+                        if let Ok(file_uuid) = uuid::Uuid::parse_str(file_id_str) {
+                            let _ = sqlx::query("DELETE FROM file_uploads WHERE id = $1").bind(file_uuid).execute(&pool).await;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let user = sqlx::query_as::<_, User>(
         r#"
         UPDATE users

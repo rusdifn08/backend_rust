@@ -1,7 +1,10 @@
 pub mod user;
-pub mod todo;
-pub mod habit;
-pub mod transaction;
-pub mod note;
-pub mod focus;
 pub mod chat;
+pub mod todo;
+pub mod note;
+pub mod habit;
+pub mod focus;
+pub mod transaction;
+pub mod gamification;
+pub mod social;
+pub mod weekly;

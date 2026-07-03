@@ -7,4 +7,8 @@ pub mod focus;
 pub mod chat;
 pub mod avatars;
 pub mod upload;
+pub mod gamification;
+pub mod social;
+pub mod weekly;
 pub mod analytics;
+pub mod shop;
