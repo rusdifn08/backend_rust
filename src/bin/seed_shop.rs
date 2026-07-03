@@ -23,9 +23,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("Phoenix Emblem", "Rise from the ashes.", 1500, "Emblem", None, Some(1)),
 
         // Pets
-        ("Pixel Dog", "A loyal companion on your productivity journey.", 1000, "Pet", Some("http://localhost:5050/api/assets/store-dog.gif"), Some(1)),
-        ("Cyber Cat", "Meow. Bleep. Bloop.", 2000, "Pet", Some("http://localhost:5050/api/assets/store-cat.gif"), Some(1)),
-        ("Golden Penguin", "Legendary pet that watches over your habits.", 5000, "Pet", Some("http://localhost:5050/api/assets/store-penguin.gif"), Some(1)),
+        ("Pixel Dog", "A loyal companion on your productivity journey.", 1000, "Pet", Some("https://rust-labs.onrender.com/api/assets/store-dog.gif"), Some(1)),
+        ("Cyber Cat", "Meow. Bleep. Bloop.", 2000, "Pet", Some("https://rust-labs.onrender.com/api/assets/store-cat.gif"), Some(1)),
+        ("Golden Penguin", "Legendary pet that watches over your habits.", 5000, "Pet", Some("https://rust-labs.onrender.com/api/assets/store-penguin.gif"), Some(1)),
 
         // Themes
         ("Dark Mode Pro", "Ultra dark aesthetic for the night owls.", 1000, "Theme", None, Some(1)),

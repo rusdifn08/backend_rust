@@ -69,7 +69,8 @@ pub async fn upload_file(
     .await
     .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let url = format!("http://localhost:5050/api/files/{}", id);
+    let base_url = std::env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:5050".to_string());
+    let url = format!("{}/api/files/{}", base_url, id);
     Ok((StatusCode::CREATED, Json(UploadResponse { url })))
 }
 
