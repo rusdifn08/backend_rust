@@ -115,6 +115,9 @@ pub struct FriendResponse {
     pub id: Uuid,
     pub username: String,
     pub status: String,
+    pub avatar_url: Option<String>,
+    pub tier: Option<i32>,
+    pub exp: Option<i32>,
 }
 
 pub async fn get_friends(
@@ -123,9 +126,10 @@ pub async fn get_friends(
 ) -> Result<Json<Vec<FriendResponse>>, (StatusCode, String)> {
     let friends = sqlx::query_as::<sqlx::Postgres, FriendResponse>(
         r#"
-        SELECT u.id, u.username, f.status
+        SELECT u.id, u.username, f.status, u.avatar_url, g.tier, g.exp
         FROM friends f
         JOIN users u ON u.id = CASE WHEN f.user_id_1 = $1 THEN f.user_id_2 ELSE f.user_id_1 END
+        LEFT JOIN gamification_stats g ON u.id = g.user_id
         WHERE (f.user_id_1 = $1 OR f.user_id_2 = $1)
         "#
     )
@@ -143,9 +147,10 @@ pub async fn search_friend(
 ) -> Result<Json<FriendResponse>, (StatusCode, String)> {
     let user = sqlx::query_as::<sqlx::Postgres, FriendResponse>(
         r#"
-        SELECT id, username, 'search' as status 
-        FROM users 
-        WHERE friend_code = $1
+        SELECT u.id, u.username, 'search' as status, u.avatar_url, g.tier, g.exp
+        FROM users u
+        LEFT JOIN gamification_stats g ON u.id = g.user_id
+        WHERE u.friend_code = $1
         "#
     )
     .bind(code)
