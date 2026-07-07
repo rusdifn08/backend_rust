@@ -62,6 +62,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/auth/register", post(api::auth::register))
         .route("/api/auth/login", post(api::auth::login))
         .route("/api/auth/profile/:id", put(api::auth::update_profile))
+        // System Routes
+        .nest("/api/system", api::system::router())
         // Todo Routes
         .route("/api/todos/user/:user_id", get(api::todos::get_todos))
         .route("/api/todos", post(api::todos::create_todo))
@@ -123,9 +125,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         
         // Badges Routes
         .route("/api/badges/user/:user_id", get(api::badges::get_user_badges))
-        
-        // System OTA
-        .route("/api/system/ota/latest", get(api::system::get_latest_ota))
         // Serve static assets from src/Assets
         .route("/api/assets/:filename", get(|axum::extract::Path(filename): axum::extract::Path<String>| async move {
             let path = format!("src/Assets/{}", filename);

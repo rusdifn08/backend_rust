@@ -11,3 +11,4 @@ pub mod weekly;
 pub mod quest;
 pub mod squad;
 pub mod badge;
+pub mod system;
