@@ -1,17 +1,14 @@
 use axum::{
     extract::{State, Path},
-    routing::{get, post},
-    Json, Router,
+    Json,
     http::StatusCode,
 };
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::user::User;
 use crate::models::gamification::{GamificationProfileResponse, BuyFreezeTicketResponse};
 use crate::repositories::gamification_repo::GamificationRepo;
 use crate::services::gamification_service::GamificationService;
 use crate::api::chat::AppState;
-use serde_json::json;
 use axum::response::IntoResponse;
 
 pub async fn get_profile(

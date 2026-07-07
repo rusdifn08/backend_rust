@@ -5,7 +5,7 @@ use axum::{
 };
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::squad::{Squad, SquadMember, CreateSquadReq, SquadMemberResponse};
+use crate::models::squad::{Squad, CreateSquadReq, SquadMemberResponse};
 
 pub async fn create_squad(
     State(pool): State<PgPool>,

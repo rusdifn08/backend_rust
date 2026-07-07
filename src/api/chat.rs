@@ -8,7 +8,7 @@ use axum::{
     Json,
 };
 use futures::{sink::SinkExt, stream::StreamExt};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -16,8 +16,7 @@ use tokio::sync::{mpsc, Mutex};
 use uuid::Uuid;
 
 use crate::models::chat::{AddFriendReq, AcceptFriendReq, ChatMessage, WsMessage};
-use crate::models::user::User;
-use tracing::{error, info};
+use tracing::info;
 
 // Store active connections: User ID -> Sender Channel
 pub type ChatState = Arc<Mutex<HashMap<String, mpsc::UnboundedSender<WsMessage>>>>;
