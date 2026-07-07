@@ -65,11 +65,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Todo Routes
         .route("/api/todos/user/:user_id", get(api::todos::get_todos))
         .route("/api/todos", post(api::todos::create_todo))
-        .route("/api/todos/:id", put(api::todos::toggle_todo).delete(api::todos::delete_todo))
+        .route("/api/todos/:id", put(api::todos::update_todo).patch(api::todos::toggle_todo).delete(api::todos::delete_todo))
         // Habit Routes
         .route("/api/habits/user/:user_id", get(api::habits::get_habits))
         .route("/api/habits", post(api::habits::create_habit))
-        .route("/api/habits/:id", put(api::habits::toggle_habit).delete(api::habits::delete_habit))
+        .route("/api/habits/:id", put(api::habits::update_habit).patch(api::habits::toggle_habit).delete(api::habits::delete_habit))
         .route("/api/habits/:id/logs", get(api::habits::get_habit_logs))
         .route("/api/habits/logs", post(api::habits::add_habit_log))
         // Transaction Routes
@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Note Routes
         .route("/api/notes/user/:user_id", get(api::notes::get_notes))
         .route("/api/notes", post(api::notes::create_note))
-        .route("/api/notes/:id", delete(api::notes::delete_note))
+        .route("/api/notes/:id", put(api::notes::update_note).delete(api::notes::delete_note))
         // Focus Routes
         .route("/api/focus", get(api::focus::get_focus_sessions).post(api::focus::create_focus_session))
         // Chat Routes

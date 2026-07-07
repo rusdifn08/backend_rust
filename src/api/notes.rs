@@ -1,7 +1,7 @@
 use axum::{extract::{State, Path}, http::StatusCode, Json};
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::note::{Note, CreateNoteReq};
+use crate::models::note::{Note, CreateNoteReq, UpdateNoteReq};
 
 pub async fn get_notes(
     Path(user_id): Path<Uuid>,
@@ -52,4 +52,31 @@ pub async fn delete_note(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn update_note(
+    State(pool): State<PgPool>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateNoteReq>,
+) -> Result<Json<Note>, (StatusCode, String)> {
+    let note = sqlx::query_as::<_, Note>(
+        r#"
+        UPDATE notes 
+        SET title = , content = , date = , tag = , color = , deadline = , updated_at = NOW() 
+        WHERE id =  
+        RETURNING *
+        "#
+    )
+    .bind(req.title)
+    .bind(req.content)
+    .bind(req.date)
+    .bind(req.tag)
+    .bind(req.color)
+    .bind(req.deadline)
+    .bind(id)
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(note))
 }

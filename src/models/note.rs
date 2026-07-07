@@ -26,3 +26,13 @@ pub struct CreateNoteReq {
     pub color: String,
     pub deadline: Option<String>,
 }
+
+#[derive(Debug, serde::Deserialize)]
+pub struct UpdateNoteReq {
+    pub title: String,
+    pub content: String,
+    pub date: String,
+    pub tag: String,
+    pub color: String,
+    pub deadline: Option<String>,
+}

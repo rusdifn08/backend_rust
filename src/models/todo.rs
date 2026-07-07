@@ -25,3 +25,12 @@ pub struct CreateTodoReq {
     pub color: String,
     pub icon: Option<String>,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateTodoReq {
+    pub title: String,
+    pub subtitle: String,
+    pub category: String,
+    pub color: String,
+    pub icon: Option<String>,
+}

@@ -1,7 +1,7 @@
 use axum::{extract::{State, Path}, http::StatusCode, Json};
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::habit::{Habit, CreateHabitReq, HabitLog, CreateHabitLogReq};
+use crate::models::habit::{Habit, CreateHabitReq, UpdateHabitReq, HabitLog, CreateHabitLogReq};
 
 pub async fn get_habits(
     Path(user_id): Path<Uuid>,
@@ -132,4 +132,31 @@ pub async fn add_habit_log(
     }
 
     Ok((StatusCode::CREATED, Json(log)))
+}
+
+pub async fn update_habit(
+    State(pool): State<PgPool>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateHabitReq>,
+) -> Result<Json<Habit>, (StatusCode, String)> {
+    let habit = sqlx::query_as::<_, Habit>(
+        r#"
+        UPDATE habits 
+        SET title = , subtitle = , category = , target_days = , color = , icon = , updated_at = NOW() 
+        WHERE id =  
+        RETURNING *
+        "#
+    )
+    .bind(req.title)
+    .bind(req.subtitle)
+    .bind(req.category)
+    .bind(req.target_days)
+    .bind(req.color)
+    .bind(req.icon)
+    .bind(id)
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(habit))
 }

@@ -47,3 +47,13 @@ pub struct CreateHabitLogReq {
     pub user_id: Option<String>,
     pub note: Option<String>,
 }
+
+#[derive(Debug, serde::Deserialize)]
+pub struct UpdateHabitReq {
+    pub title: String,
+    pub subtitle: String,
+    pub category: String,
+    pub target_days: i32,
+    pub color: String,
+    pub icon: Option<String>,
+}
