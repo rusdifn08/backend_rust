@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS squads (
 CREATE TABLE IF NOT EXISTS squad_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     squad_id UUID NOT NULL REFERENCES squads(id) ON DELETE CASCADE,
-    user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role VARCHAR(50) NOT NULL DEFAULT 'member', -- 'leader', 'member'
     joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(squad_id, user_id)
