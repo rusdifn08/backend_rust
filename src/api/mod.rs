@@ -13,3 +13,6 @@ pub mod weekly;
 pub mod analytics;
 pub mod shop;
 pub mod system;
+pub mod quests;
+pub mod squads;
+pub mod badges;

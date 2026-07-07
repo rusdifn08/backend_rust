@@ -113,6 +113,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/shop/buy", post(api::shop::buy_item))
         .route("/api/shop/equip/:inventory_id", post(api::shop::equip_item))
         
+        // Quests Routes
+        .route("/api/quests/daily/:user_id", get(api::quests::get_daily_quests))
+        .route("/api/quests/claim/:id", post(api::quests::claim_quest_reward))
+        
+        // Squads Routes
+        .route("/api/squads", post(api::squads::create_squad))
+        .route("/api/squads/:id/leaderboard", get(api::squads::get_squad_leaderboard))
+        
+        // Badges Routes
+        .route("/api/badges/user/:user_id", get(api::badges::get_user_badges))
+        
         // System OTA
         .route("/api/system/ota/latest", get(api::system::get_latest_ota))
         // Serve static assets from src/Assets

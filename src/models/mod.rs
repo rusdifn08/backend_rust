@@ -8,3 +8,6 @@ pub mod transaction;
 pub mod gamification;
 pub mod social;
 pub mod weekly;
+pub mod quest;
+pub mod squad;
+pub mod badge;
