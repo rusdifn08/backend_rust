@@ -5,7 +5,7 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
-use serde_json::json;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -164,14 +164,32 @@ pub async fn respond_affinity(
     }
 }
 
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct AffinityWithUser {
+    pub id: Uuid,
+    pub requester_id: Uuid,
+    pub receiver_id: Uuid,
+    pub affinity_type: String,
+    pub status: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub requester_username: Option<String>,
+    pub requester_avatar: Option<String>,
+}
+
 pub async fn get_user_affinities(
     Path(user_id): Path<Uuid>,
     State(state): State<AppState>,
-) -> Result<Json<Vec<AffinityConnection>>, (StatusCode, String)> {
-    let connections = sqlx::query_as::<_, AffinityConnection>(
+) -> Result<Json<Vec<AffinityWithUser>>, (StatusCode, String)> {
+    let connections = sqlx::query_as::<_, AffinityWithUser>(
         r#"
-        SELECT * FROM affinity_connections 
-        WHERE requester_id = $1 OR receiver_id = $1
+        SELECT 
+            a.*,
+            u.username as requester_username,
+            u.avatar_url as requester_avatar
+        FROM affinity_connections a
+        LEFT JOIN users u ON u.id = a.requester_id
+        WHERE a.requester_id = $1 OR a.receiver_id = $1
+        ORDER BY a.created_at DESC
         "#
     )
     .bind(user_id)
