@@ -14,8 +14,13 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/health", get(health_check))
         .route("/version/latest", get(get_latest_version))
         .route("/version", post(publish_new_version))
+}
+
+async fn health_check() -> impl IntoResponse {
+    (StatusCode::OK, "OK")
 }
 
 async fn get_latest_version(
