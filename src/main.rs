@@ -92,6 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/chat/history/:user1/:user2", get(api::chat::get_chat_history).delete(api::chat::delete_chat_history))
         .route("/api/chat/message/:id", delete(api::chat::delete_single_message))
         .route("/api/ws/chat/:user_id", get(api::chat::ws_handler))
+        .nest("/api/affinity", api::affinity::router())
         // Avatars Routes
         .route("/api/avatars", get(api::avatars::get_avatars))
         // Upload Routes

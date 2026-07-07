@@ -11,6 +11,7 @@ pub mod gamification;
 pub mod social;
 pub mod weekly;
 pub mod analytics;
+pub mod affinity;
 pub mod shop;
 pub mod system;
 pub mod quests;
