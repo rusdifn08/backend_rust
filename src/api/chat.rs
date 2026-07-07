@@ -129,7 +129,7 @@ pub async fn get_friends(
         SELECT u.id, u.username, f.status, u.avatar_url, g.tier, g.exp
         FROM friends f
         JOIN users u ON u.id = CASE WHEN f.user_id_1 = $1 THEN f.user_id_2 ELSE f.user_id_1 END
-        LEFT JOIN gamification_stats g ON u.id = g.user_id
+        LEFT JOIN user_stats g ON u.id = g.user_id
         WHERE (f.user_id_1 = $1 OR f.user_id_2 = $1)
         "#
     )
@@ -149,7 +149,7 @@ pub async fn search_friend(
         r#"
         SELECT u.id, u.username, 'search' as status, u.avatar_url, g.tier, g.exp
         FROM users u
-        LEFT JOIN gamification_stats g ON u.id = g.user_id
+        LEFT JOIN user_stats g ON u.id = g.user_id
         WHERE u.friend_code = $1
         "#
     )
