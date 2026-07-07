@@ -1,7 +1,7 @@
+use dotenvy::dotenv;
 use sqlx::PgPool;
 use std::fs;
 use std::path::Path;
-use dotenvy::dotenv;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if path.exists() {
             let image_data = fs::read(path)?;
-            
+
             sqlx::query(
                 r#"
                 INSERT INTO tier_borders (tier, image_data)
@@ -32,8 +32,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .bind(image_data.clone())
             .execute(&pool)
             .await?;
-            
-            println!("Successfully seeded tier {}: {} bytes", tier, image_data.len());
+
+            println!(
+                "Successfully seeded tier {}: {} bytes",
+                tier,
+                image_data.len()
+            );
         } else {
             println!("Warning: Border image not found at {:?}", path);
         }
@@ -46,9 +50,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         UPDATE user_stats 
         SET exp = 1000000, coins = 99999
         WHERE user_id = (SELECT id FROM users WHERE username = 'rusdifn08')
-        "#
-    ).execute(&pool).await?;
-    
+        "#,
+    )
+    .execute(&pool)
+    .await?;
+
     println!("Rows updated for gamemaster: {}", res.rows_affected());
 
     println!("Done!");

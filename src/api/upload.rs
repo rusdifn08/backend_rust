@@ -50,7 +50,10 @@ pub async fn upload_file(
             let resized = img.resize(360, 360, image::imageops::FilterType::Lanczos3);
             let mut buffer = std::io::Cursor::new(Vec::new());
             // Write as JPEG
-            if resized.write_to(&mut buffer, image::ImageFormat::Jpeg).is_ok() {
+            if resized
+                .write_to(&mut buffer, image::ImageFormat::Jpeg)
+                .is_ok()
+            {
                 data_bytes = buffer.into_inner();
                 mime_type = "image/jpeg".to_string();
             }
@@ -59,17 +62,16 @@ pub async fn upload_file(
 
     let id = Uuid::new_v4();
 
-    sqlx::query(
-        "INSERT INTO file_uploads (id, mime_type, data) VALUES ($1, $2, $3)"
-    )
-    .bind(id)
-    .bind(&mime_type)
-    .bind(&data_bytes)
-    .execute(&state.pool)
-    .await
-    .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    sqlx::query("INSERT INTO file_uploads (id, mime_type, data) VALUES ($1, $2, $3)")
+        .bind(id)
+        .bind(&mime_type)
+        .bind(&data_bytes)
+        .execute(&state.pool)
+        .await
+        .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let base_url = std::env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:5050".to_string());
+    let base_url =
+        std::env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:5050".to_string());
     let url = format!("{}/api/files/{}", base_url, id);
     Ok((StatusCode::CREATED, Json(UploadResponse { url })))
 }
@@ -80,13 +82,11 @@ pub async fn get_file(
     Path(id): Path<Uuid>,
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let record = sqlx::query(
-        "SELECT mime_type, data FROM file_uploads WHERE id = $1"
-    )
-    .bind(id)
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let record = sqlx::query("SELECT mime_type, data FROM file_uploads WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     match record {
         Some(r) => {

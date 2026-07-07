@@ -1,6 +1,6 @@
+use crate::models::weekly::WeeklyTask;
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::weekly::WeeklyTask;
 
 pub struct WeeklyRepo;
 
@@ -11,12 +11,12 @@ impl WeeklyRepo {
             SELECT * FROM weekly_tasks
             WHERE user_id = $1
             ORDER BY day_of_week ASC, created_at DESC
-            "#
+            "#,
         )
         .bind(user_id)
         .fetch_all(pool)
         .await?;
-        
+
         Ok(rows)
     }
 
@@ -32,7 +32,7 @@ impl WeeklyRepo {
             INSERT INTO weekly_tasks (user_id, title, description, day_of_week)
             VALUES ($1, $2, $3, $4)
             RETURNING *
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(title)
@@ -44,17 +44,14 @@ impl WeeklyRepo {
         Ok(row)
     }
 
-    pub async fn toggle_task(
-        pool: &PgPool,
-        id: Uuid,
-    ) -> Result<WeeklyTask, sqlx::Error> {
+    pub async fn toggle_task(pool: &PgPool, id: Uuid) -> Result<WeeklyTask, sqlx::Error> {
         let row = sqlx::query_as::<_, WeeklyTask>(
             r#"
             UPDATE weekly_tasks
             SET is_completed = NOT is_completed, updated_at = NOW()
             WHERE id = $1
             RETURNING *
-            "#
+            "#,
         )
         .bind(id)
         .fetch_one(pool)
@@ -63,14 +60,11 @@ impl WeeklyRepo {
         Ok(row)
     }
 
-    pub async fn delete_task(
-        pool: &PgPool,
-        id: Uuid,
-    ) -> Result<u64, sqlx::Error> {
+    pub async fn delete_task(pool: &PgPool, id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query(
             r#"
             DELETE FROM weekly_tasks WHERE id = $1
-            "#
+            "#,
         )
         .bind(id)
         .execute(pool)

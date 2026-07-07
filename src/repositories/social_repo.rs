@@ -1,6 +1,6 @@
+use crate::models::social::{LeaderboardEntry, SocialActivity};
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::social::{SocialActivity, LeaderboardEntry};
 
 pub struct SocialRepo;
 
@@ -17,7 +17,7 @@ impl SocialRepo {
             VALUES ($1, $2, $3)
             RETURNING id, user_id, action_type, description, created_at, 
             NULL as username, NULL as avatar_url
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(action_type)
@@ -38,7 +38,7 @@ impl SocialRepo {
             JOIN users u ON a.user_id = u.id
             ORDER BY a.created_at DESC
             LIMIT $1
-            "#
+            "#,
         )
         .bind(limit)
         .fetch_all(pool)
@@ -47,7 +47,10 @@ impl SocialRepo {
         Ok(rows)
     }
 
-    pub async fn get_leaderboard(pool: &PgPool, limit: i64) -> Result<Vec<LeaderboardEntry>, sqlx::Error> {
+    pub async fn get_leaderboard(
+        pool: &PgPool,
+        limit: i64,
+    ) -> Result<Vec<LeaderboardEntry>, sqlx::Error> {
         let rows = sqlx::query_as::<_, LeaderboardEntry>(
             r#"
             SELECT u.id as user_id, u.username, u.avatar_url, s.tier, s.exp
@@ -55,7 +58,7 @@ impl SocialRepo {
             JOIN user_stats s ON u.id = s.user_id
             ORDER BY s.exp DESC
             LIMIT $1
-            "#
+            "#,
         )
         .bind(limit)
         .fetch_all(pool)

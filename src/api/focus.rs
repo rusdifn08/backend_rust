@@ -1,12 +1,16 @@
+use crate::models::focus::{CreateFocusSessionReq, FocusSession};
 use axum::{extract::State, http::StatusCode, Json};
 use sqlx::PgPool;
-use crate::models::focus::{FocusSession, CreateFocusSessionReq};
 
-pub async fn get_focus_sessions(State(pool): State<PgPool>) -> Result<Json<Vec<FocusSession>>, (StatusCode, String)> {
-    let sessions = sqlx::query_as::<_, FocusSession>("SELECT * FROM focus_sessions ORDER BY completed_at DESC")
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+pub async fn get_focus_sessions(
+    State(pool): State<PgPool>,
+) -> Result<Json<Vec<FocusSession>>, (StatusCode, String)> {
+    let sessions = sqlx::query_as::<_, FocusSession>(
+        "SELECT * FROM focus_sessions ORDER BY completed_at DESC",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(sessions))
 }
 
@@ -19,7 +23,7 @@ pub async fn create_focus_session(
         INSERT INTO focus_sessions (duration_minutes, task_name) 
         VALUES ($1, $2) 
         RETURNING *
-        "#
+        "#,
     )
     .bind(req.duration_minutes)
     .bind(req.task_name)

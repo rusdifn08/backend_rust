@@ -16,10 +16,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for tier in 1..=10 {
         let file_path = PathBuf::from(format!("src/Assets/tier{}.png", tier));
-        
+
         if file_path.exists() {
             let img_bytes = fs::read(&file_path)?;
-            
+
             sqlx::query(
                 "INSERT INTO tier_borders (tier, image_data) VALUES ($1, $2) ON CONFLICT (tier) DO UPDATE SET image_data = EXCLUDED.image_data"
             )
@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .bind(img_bytes)
             .execute(&pool)
             .await?;
-            
+
             println!("Uploaded tier{}.png to database", tier);
         } else {
             println!("File tier{}.png not found, skipping.", tier);

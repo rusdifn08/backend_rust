@@ -1,6 +1,6 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct AffinityConnection {
@@ -8,7 +8,7 @@ pub struct AffinityConnection {
     pub requester_id: Uuid,
     pub receiver_id: Uuid,
     pub affinity_type: String, // partner, bro, bestie, confidant
-    pub status: String, // pending, accepted
+    pub status: String,        // pending, accepted
     pub created_at: DateTime<Utc>,
 }
 

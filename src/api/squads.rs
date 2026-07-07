@@ -1,3 +1,4 @@
+use crate::models::squad::{CreateSquadReq, Squad, SquadMemberResponse};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -5,20 +6,22 @@ use axum::{
 };
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::squad::{Squad, CreateSquadReq, SquadMemberResponse};
 
 pub async fn create_squad(
     State(pool): State<PgPool>,
     Json(req): Json<CreateSquadReq>,
 ) -> Result<Json<Squad>, (StatusCode, String)> {
-    let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let squad = sqlx::query_as::<_, Squad>(
         r#"
         INSERT INTO squads (name, description) 
         VALUES ($1, $2) 
         RETURNING *
-        "#
+        "#,
     )
     .bind(&req.name)
     .bind(&req.description)
@@ -30,7 +33,7 @@ pub async fn create_squad(
         r#"
         INSERT INTO squad_members (squad_id, user_id, role) 
         VALUES ($1, $2, 'leader')
-        "#
+        "#,
     )
     .bind(squad.id)
     .bind(&req.user_id)
@@ -38,7 +41,9 @@ pub async fn create_squad(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    tx.commit().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(squad))
 }
@@ -56,7 +61,7 @@ pub async fn get_squad_leaderboard(
         JOIN users u ON sm.user_id = u.id
         WHERE sm.squad_id = $1
         ORDER BY u.created_at ASC
-        "#
+        "#,
     )
     .bind(id)
     .fetch_all(&pool)

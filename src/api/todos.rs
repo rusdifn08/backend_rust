@@ -1,7 +1,11 @@
-use axum::{extract::{State, Path}, http::StatusCode, Json};
+use crate::models::todo::{CreateTodoReq, Todo, UpdateTodoReq};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::todo::{Todo, CreateTodoReq, UpdateTodoReq};
 
 pub async fn get_todos(
     Path(user_id): Path<Uuid>,
@@ -19,13 +23,14 @@ pub async fn create_todo(
     State(pool): State<PgPool>,
     Json(req): Json<CreateTodoReq>,
 ) -> Result<(StatusCode, Json<Todo>), (StatusCode, String)> {
-    let user_uuid = Uuid::parse_str(&req.user_id).map_err(|_| (StatusCode::BAD_REQUEST, "Invalid UUID".into()))?;
+    let user_uuid = Uuid::parse_str(&req.user_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid UUID".into()))?;
     let todo = sqlx::query_as::<_, Todo>(
         r#"
         INSERT INTO todos (user_id, title, subtitle, category, color, icon) 
         VALUES ($1, $2, $3, $4, $5, $6) 
         RETURNING *
-        "#
+        "#,
     )
     .bind(user_uuid)
     .bind(req.title)
@@ -51,7 +56,7 @@ pub async fn update_todo(
         SET title = $1, subtitle = $2, category = $3, color = $4, icon = $5, updated_at = NOW() 
         WHERE id = $6 
         RETURNING *
-        "#
+        "#,
     )
     .bind(req.title)
     .bind(req.subtitle)
@@ -76,7 +81,7 @@ pub async fn toggle_todo(
         SET is_completed = NOT is_completed, updated_at = NOW() 
         WHERE id = $1 
         RETURNING *
-        "#
+        "#,
     )
     .bind(id)
     .fetch_one(&pool)
@@ -87,14 +92,19 @@ pub async fn toggle_todo(
         if let Some(uid) = todo.user_id {
             // Gamification Reward
             let _ = crate::services::gamification_service::GamificationService::add_reward(
-                &pool, uid, 10, 5 // 10 EXP, 5 Coins
-            ).await;
-            
+                &pool, uid, 10, 5, // 10 EXP, 5 Coins
+            )
+            .await;
+
             // Social Feed
             let desc = format!("Completed a task: {}", todo.title);
             let _ = crate::repositories::social_repo::SocialRepo::create_activity(
-                &pool, uid, "TODO_COMPLETED", &desc
-            ).await;
+                &pool,
+                uid,
+                "TODO_COMPLETED",
+                &desc,
+            )
+            .await;
         }
     }
 

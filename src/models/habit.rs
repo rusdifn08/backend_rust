@@ -1,6 +1,6 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Habit {
@@ -30,15 +30,18 @@ pub struct HabitLog {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateHabitReq {
+    pub id: Option<String>,
     pub user_id: String,
     pub title: String,
-    pub time: String,
+    pub time: Option<String>,
     pub icon: String,
     pub color: String,
-    pub streak: i32,
+    pub streak: Option<i32>,
     pub category: String,
     pub description: Option<String>,
+    pub subtitle: Option<String>,
     pub frequency: Option<String>,
+    pub target_days: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -53,7 +56,7 @@ pub struct UpdateHabitReq {
     pub title: String,
     pub subtitle: String,
     pub category: String,
-    pub target_days: i32,
+    pub target_days: Option<i32>,
     pub color: String,
     pub icon: Option<String>,
 }

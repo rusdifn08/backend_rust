@@ -21,14 +21,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for (name, dtype) in rows {
         println!("{}: {}", name, dtype);
     }
-    
+
     // Get schema of users
     let rows2: Vec<(String, String)> = sqlx::query_as(
-        "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'users'"
+        "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'users'",
     )
     .fetch_all(&pool)
     .await?;
-    
+
     println!("users columns:");
     for (name, dtype) in rows2 {
         println!("{}: {}", name, dtype);
@@ -36,4 +36,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-

@@ -1,21 +1,22 @@
+use crate::models::gamification::{UserAchievement, UserStats};
+use axum::http::StatusCode;
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::gamification::{UserStats, UserAchievement};
-use axum::http::StatusCode;
 
 pub struct GamificationRepo;
 
 impl GamificationRepo {
     // Get or Create user stats
-    pub async fn get_stats(pool: &PgPool, user_id: Uuid) -> Result<UserStats, (StatusCode, String)> {
+    pub async fn get_stats(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<UserStats, (StatusCode, String)> {
         // Try to select
-        let stats = sqlx::query_as::<_, UserStats>(
-            "SELECT * FROM user_stats WHERE user_id = $1"
-        )
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        let stats = sqlx::query_as::<_, UserStats>("SELECT * FROM user_stats WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
         if let Some(s) = stats {
             // Update last_active
@@ -24,7 +25,7 @@ impl GamificationRepo {
                 .execute(pool)
                 .await
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-            
+
             return Ok(s);
         }
 
@@ -34,7 +35,7 @@ impl GamificationRepo {
             INSERT INTO user_stats (user_id, exp, coins, tier, freeze_tickets)
             VALUES ($1, 0, 0, 1, 0)
             RETURNING *
-            "#
+            "#,
         )
         .bind(user_id)
         .fetch_one(pool)
@@ -44,15 +45,18 @@ impl GamificationRepo {
         Ok(new_stats)
     }
 
-    pub async fn get_achievements(pool: &PgPool, user_id: Uuid) -> Result<Vec<UserAchievement>, (StatusCode, String)> {
+    pub async fn get_achievements(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<Vec<UserAchievement>, (StatusCode, String)> {
         let achievements = sqlx::query_as::<_, UserAchievement>(
-            "SELECT * FROM user_achievements WHERE user_id = $1 ORDER BY unlocked_at DESC"
+            "SELECT * FROM user_achievements WHERE user_id = $1 ORDER BY unlocked_at DESC",
         )
         .bind(user_id)
         .fetch_all(pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-        
+
         Ok(achievements)
     }
 
@@ -84,14 +88,19 @@ impl GamificationRepo {
         Ok(stats)
     }
 
-    pub async fn unlock_achievement(pool: &PgPool, user_id: Uuid, badge_id: &str) -> Result<bool, (StatusCode, String)> {
+    #[allow(dead_code)]
+    pub async fn unlock_achievement(
+        pool: &PgPool,
+        user_id: Uuid,
+        badge_id: &str,
+    ) -> Result<bool, (StatusCode, String)> {
         // Attempt insert, on conflict do nothing
         let result = sqlx::query(
             r#"
             INSERT INTO user_achievements (user_id, badge_id)
             VALUES ($1, $2)
             ON CONFLICT (user_id, badge_id) DO NOTHING
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(badge_id)

@@ -1,10 +1,10 @@
+use crate::models::badge::UserBadgeResponse;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     Json,
 };
 use sqlx::PgPool;
-use crate::models::badge::UserBadgeResponse;
 
 pub async fn get_user_badges(
     State(pool): State<PgPool>,
@@ -19,7 +19,7 @@ pub async fn get_user_badges(
         JOIN badges b ON ub.badge_id = b.id
         WHERE ub.user_id = $1
         ORDER BY ub.earned_at DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(&pool)

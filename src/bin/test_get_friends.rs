@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .fetch_optional(&pool)
     .await;
-    
+
     match row {
         Ok(_) => println!("Query succeeded!"),
         Err(e) => println!("Query failed: {}", e),
@@ -27,4 +27,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-

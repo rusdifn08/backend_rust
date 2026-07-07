@@ -1,5 +1,5 @@
-use sqlx::PgPool;
 use dotenvy::dotenv;
+use sqlx::PgPool;
 use std::env;
 
 #[tokio::main]
@@ -14,28 +14,122 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let items = vec![
         // Consumables
-        ("Freeze Ticket", "Protects your streak for 1 day.", 50, "Consumable", None, None),
-        ("Double EXP Potion", "Double EXP gain for 24 hours.", 150, "Consumable", None, None),
-        
+        (
+            "Freeze Ticket",
+            "Protects your streak for 1 day.",
+            50,
+            "Consumable",
+            None,
+            None,
+        ),
+        (
+            "Double EXP Potion",
+            "Double EXP gain for 24 hours.",
+            150,
+            "Consumable",
+            None,
+            None,
+        ),
         // Emblems
-        ("Master Emblem", "Show off your mastery.", 500, "Emblem", None, Some(1)),
-        ("Dragon Emblem", "The ultimate symbol of power.", 1000, "Emblem", None, Some(1)),
-        ("Phoenix Emblem", "Rise from the ashes.", 1500, "Emblem", None, Some(1)),
-
+        (
+            "Master Emblem",
+            "Show off your mastery.",
+            500,
+            "Emblem",
+            None,
+            Some(1),
+        ),
+        (
+            "Dragon Emblem",
+            "The ultimate symbol of power.",
+            1000,
+            "Emblem",
+            None,
+            Some(1),
+        ),
+        (
+            "Phoenix Emblem",
+            "Rise from the ashes.",
+            1500,
+            "Emblem",
+            None,
+            Some(1),
+        ),
         // Pets
-        ("Pixel Dog", "A loyal companion on your productivity journey.", 1000, "Pet", Some("https://rust-labs.onrender.com/api/assets/store-dog.gif"), Some(1)),
-        ("Cyber Cat", "Meow. Bleep. Bloop.", 2000, "Pet", Some("https://rust-labs.onrender.com/api/assets/store-cat.gif"), Some(1)),
-        ("Golden Penguin", "Legendary pet that watches over your habits.", 5000, "Pet", Some("https://rust-labs.onrender.com/api/assets/store-penguin.gif"), Some(1)),
-
+        (
+            "Pixel Dog",
+            "A loyal companion on your productivity journey.",
+            1000,
+            "Pet",
+            Some("https://rust-labs.onrender.com/api/assets/store-dog.gif"),
+            Some(1),
+        ),
+        (
+            "Cyber Cat",
+            "Meow. Bleep. Bloop.",
+            2000,
+            "Pet",
+            Some("https://rust-labs.onrender.com/api/assets/store-cat.gif"),
+            Some(1),
+        ),
+        (
+            "Golden Penguin",
+            "Legendary pet that watches over your habits.",
+            5000,
+            "Pet",
+            Some("https://rust-labs.onrender.com/api/assets/store-penguin.gif"),
+            Some(1),
+        ),
         // Themes
-        ("Dark Mode Pro", "Ultra dark aesthetic for the night owls.", 1000, "Theme", None, Some(1)),
-        ("Sakura Pink", "A beautiful, serene pink aesthetic.", 1200, "Theme", None, Some(1)),
-        ("Neon Cyberpunk", "Vibrant neon colors on a dark background.", 1500, "Theme", None, Some(1)),
-        ("Ocean Breeze", "Calming blue and teal gradients.", 1200, "Theme", None, Some(1)),
-
+        (
+            "Dark Mode Pro",
+            "Ultra dark aesthetic for the night owls.",
+            1000,
+            "Theme",
+            None,
+            Some(1),
+        ),
+        (
+            "Sakura Pink",
+            "A beautiful, serene pink aesthetic.",
+            1200,
+            "Theme",
+            None,
+            Some(1),
+        ),
+        (
+            "Neon Cyberpunk",
+            "Vibrant neon colors on a dark background.",
+            1500,
+            "Theme",
+            None,
+            Some(1),
+        ),
+        (
+            "Ocean Breeze",
+            "Calming blue and teal gradients.",
+            1200,
+            "Theme",
+            None,
+            Some(1),
+        ),
         // UI Custom
-        ("Retro Font", "Changes your app font to a retro 8-bit style.", 800, "UICustom", None, Some(1)),
-        ("Glassmorphism Pro", "Enhanced glass effects for all cards.", 1500, "UICustom", None, Some(1)),
+        (
+            "Retro Font",
+            "Changes your app font to a retro 8-bit style.",
+            800,
+            "UICustom",
+            None,
+            Some(1),
+        ),
+        (
+            "Glassmorphism Pro",
+            "Enhanced glass effects for all cards.",
+            1500,
+            "UICustom",
+            None,
+            Some(1),
+        ),
     ];
 
     for (name, desc, price, category, url, max_p) in items {
@@ -50,7 +144,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .bind(max_p)
         .execute(&pool)
         .await?;
-        
+
         println!("Inserted {}", name);
     }
 

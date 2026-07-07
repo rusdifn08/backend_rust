@@ -15,13 +15,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = PgPool::connect(&database_url).await?;
 
-    let users = sqlx::query_as::<sqlx::Postgres, UserRow>("SELECT id, username, email, friend_code FROM users")
-        .fetch_all(&pool)
-        .await?;
+    let users = sqlx::query_as::<sqlx::Postgres, UserRow>(
+        "SELECT id, username, email, friend_code FROM users",
+    )
+    .fetch_all(&pool)
+    .await?;
 
     println!("--- LIST OF USERS ---");
     for user in users {
-        println!("Name: {} | Code: {} | ID: {}", user.username, user.friend_code, user.id);
+        println!(
+            "Name: {} | Code: {} | ID: {}",
+            user.username, user.friend_code, user.id
+        );
     }
     println!("---------------------");
 

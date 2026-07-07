@@ -22,7 +22,7 @@ async fn get_latest_version(
     State(state): State<AppState>,
 ) -> Result<Json<AppVersion>, (StatusCode, String)> {
     let result = sqlx::query_as::<_, AppVersion>(
-        "SELECT * FROM app_versions ORDER BY version_code DESC LIMIT 1"
+        "SELECT * FROM app_versions ORDER BY version_code DESC LIMIT 1",
     )
     .fetch_optional(&state.pool)
     .await

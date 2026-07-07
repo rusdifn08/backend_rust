@@ -1,8 +1,8 @@
-use uuid::Uuid;
-use sqlx::PgPool;
-use crate::models::gamification::{UserStats, BuyFreezeTicketResponse};
+use crate::models::gamification::{BuyFreezeTicketResponse, UserStats};
 use crate::repositories::gamification_repo::GamificationRepo;
 use axum::http::StatusCode;
+use sqlx::PgPool;
+use uuid::Uuid;
 
 pub struct GamificationService;
 
@@ -29,13 +29,13 @@ impl GamificationService {
         coins_to_add: i32,
     ) -> Result<UserStats, (StatusCode, String)> {
         let current_stats = GamificationRepo::get_stats(pool, user_id).await?;
-        
+
         let new_exp = current_stats.exp + exp_to_add;
         let mut new_coins = current_stats.coins + coins_to_add;
-        
+
         let (current_tier_level, _) = Self::get_tier_by_exp(current_stats.exp);
         let (new_tier_level, _) = Self::get_tier_by_exp(new_exp);
-        
+
         if new_tier_level > current_tier_level {
             new_coins += new_tier_level * 50; // Bonus coins on level up
         }
@@ -46,13 +46,17 @@ impl GamificationService {
             new_exp,
             new_coins,
             new_tier_level,
-            current_stats.freeze_tickets
-        ).await
+            current_stats.freeze_tickets,
+        )
+        .await
     }
 
-    pub async fn buy_freeze_ticket(pool: &PgPool, user_id: Uuid) -> Result<BuyFreezeTicketResponse, (StatusCode, String)> {
+    pub async fn buy_freeze_ticket(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<BuyFreezeTicketResponse, (StatusCode, String)> {
         let stats = GamificationRepo::get_stats(pool, user_id).await?;
-        
+
         if stats.coins < 200 {
             return Ok(BuyFreezeTicketResponse {
                 success: false,
@@ -68,8 +72,9 @@ impl GamificationService {
             stats.exp,
             stats.coins - 200,
             stats.tier,
-            stats.freeze_tickets + 1
-        ).await?;
+            stats.freeze_tickets + 1,
+        )
+        .await?;
 
         Ok(BuyFreezeTicketResponse {
             success: true,
