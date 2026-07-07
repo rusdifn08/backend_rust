@@ -3,15 +3,18 @@ use axum::{
     extract::State,
     http::{Request, StatusCode},
     middleware::Next,
-    response::{sse::{Event, Sse}, IntoResponse},
+    response::{
+        sse::{Event, Sse},
+        IntoResponse,
+    },
     Extension,
 };
 use futures::stream::Stream;
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::{convert::Infallible, sync::Arc, time::Instant};
 use tokio::sync::{broadcast, RwLock};
 use tokio_stream::wrappers::BroadcastStream;
-use futures::StreamExt;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Metrics {
@@ -22,6 +25,11 @@ pub struct Metrics {
     pub post_count: u64,
     pub put_count: u64,
     pub delete_count: u64,
+    pub active_ws_connections: i32,
+    pub ws_messages_received: u64,
+    pub ws_messages_delivered: u64,
+    pub ws_messages_offline: u64,
+    pub ws_errors: u64,
 }
 
 impl Default for Metrics {
@@ -34,6 +42,11 @@ impl Default for Metrics {
             post_count: 0,
             put_count: 0,
             delete_count: 0,
+            active_ws_connections: 0,
+            ws_messages_received: 0,
+            ws_messages_delivered: 0,
+            ws_messages_offline: 0,
+            ws_errors: 0,
         }
     }
 }
@@ -46,10 +59,20 @@ pub struct RequestLog {
     pub latency_ms: f64,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct WsEventLog {
+    pub event: String,
+    pub user_id: Option<String>,
+    pub peer_id: Option<String>,
+    pub message_id: Option<String>,
+    pub detail: String,
+}
+
 #[derive(Clone, Serialize)]
 pub struct AnalyticsPayload {
     pub metrics: Metrics,
     pub log: Option<RequestLog>,
+    pub ws_event: Option<WsEventLog>,
 }
 
 #[derive(Clone)]
@@ -65,6 +88,31 @@ impl AnalyticsState {
             metrics: Arc::new(RwLock::new(Metrics::default())),
             tx,
         }
+    }
+
+    pub async fn emit_ws_event(&self, event: &str, ws_event: WsEventLog) {
+        let mut m = self.metrics.write().await;
+
+        match event {
+            "connected" => m.active_ws_connections += 1,
+            "disconnected" => {
+                if m.active_ws_connections > 0 {
+                    m.active_ws_connections -= 1;
+                }
+            }
+            "message_received" => m.ws_messages_received += 1,
+            "message_delivered" => m.ws_messages_delivered += 1,
+            "message_offline" => m.ws_messages_offline += 1,
+            "error" => m.ws_errors += 1,
+            _ => {}
+        }
+
+        let payload = AnalyticsPayload {
+            metrics: m.clone(),
+            log: None,
+            ws_event: Some(ws_event),
+        };
+        let _ = self.tx.send(payload);
     }
 }
 
@@ -86,8 +134,12 @@ pub async fn analytics_middleware(
     {
         let mut m = state.metrics.write().await;
         m.active_concurrency += 1;
-        
-        let payload = AnalyticsPayload { metrics: m.clone(), log: None };
+
+        let payload = AnalyticsPayload {
+            metrics: m.clone(),
+            log: None,
+            ws_event: None,
+        };
         let _ = state.tx.send(payload);
     }
 
@@ -102,7 +154,7 @@ pub async fn analytics_middleware(
         let mut m = state.metrics.write().await;
         m.active_concurrency -= 1;
         m.total_requests += 1;
-        
+
         match method.as_str() {
             "GET" => m.get_count += 1,
             "POST" => m.post_count += 1,
@@ -112,7 +164,8 @@ pub async fn analytics_middleware(
         }
 
         // Running average
-        m.avg_latency_ms = m.avg_latency_ms + ((elapsed - m.avg_latency_ms) / m.total_requests as f64);
+        m.avg_latency_ms =
+            m.avg_latency_ms + ((elapsed - m.avg_latency_ms) / m.total_requests as f64);
 
         let log = RequestLog {
             method: method.to_string(),
@@ -121,7 +174,11 @@ pub async fn analytics_middleware(
             latency_ms: elapsed,
         };
 
-        let payload = AnalyticsPayload { metrics: m.clone(), log: Some(log) };
+        let payload = AnalyticsPayload {
+            metrics: m.clone(),
+            log: Some(log),
+            ws_event: None,
+        };
         let _ = state.tx.send(payload);
     }
 
@@ -132,27 +189,33 @@ pub async fn stream_analytics(
     State(state): State<AnalyticsState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let rx = state.tx.subscribe();
-    
+
     // Send initial state immediately
     let initial_metrics = {
         let m = state.metrics.read().await;
         m.clone()
     };
-    
-    let initial_payload = AnalyticsPayload { metrics: initial_metrics, log: None };
+
+    let initial_payload = AnalyticsPayload {
+        metrics: initial_metrics,
+        log: None,
+        ws_event: None,
+    };
     let initial_stream = futures::stream::once(async move {
         Ok(Event::default().data(serde_json::to_string(&initial_payload).unwrap()))
     });
 
     let broadcast_stream = BroadcastStream::new(rx).filter_map(|res| async {
         match res {
-            Ok(payload) => Some(Ok(Event::default().data(serde_json::to_string(&payload).unwrap()))),
+            Ok(payload) => Some(Ok(
+                Event::default().data(serde_json::to_string(&payload).unwrap())
+            )),
             Err(_) => None, // receiver lagged
         }
     });
 
     let combined_stream = initial_stream.chain(broadcast_stream);
-    
+
     Sse::new(combined_stream).keep_alive(axum::response::sse::KeepAlive::new())
 }
 
@@ -178,8 +241,12 @@ pub async fn get_kpi(
         Ok(r) => {
             let total = r.total.unwrap_or(0) as f64;
             let completed = r.completed.unwrap_or(0) as f64;
-            if total > 0.0 { completed / total } else { 0.0 }
-        },
+            if total > 0.0 {
+                completed / total
+            } else {
+                0.0
+            }
+        }
         Err(_) => 0.0,
     };
 
@@ -195,8 +262,12 @@ pub async fn get_kpi(
         Ok(r) => {
             let total = r.total.unwrap_or(0) as f64;
             let active = r.active.unwrap_or(0) as f64;
-            if total > 0.0 { active / total } else { 0.0 }
-        },
+            if total > 0.0 {
+                active / total
+            } else {
+                0.0
+            }
+        }
         Err(_) => 0.0,
     };
 

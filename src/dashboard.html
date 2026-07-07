@@ -13,6 +13,7 @@
         .log-container { scroll-behavior: smooth; }
         .log-success { color: #4ade80; }
         .log-error { color: #f87171; }
+        .log-ws { color: #38bdf8; }
     </style>
 </head>
 <body class="p-6 h-screen flex flex-col">
@@ -38,7 +39,7 @@
         <!-- Left Column: Metrics & Charts -->
         <div class="col-span-12 lg:col-span-8 flex flex-col space-y-6 min-h-0">
             <!-- Overview Cards -->
-            <div class="grid grid-cols-3 gap-6">
+            <div class="grid grid-cols-2 xl:grid-cols-4 gap-6">
                 <div class="glass-card rounded-2xl p-6 flex flex-col">
                     <span class="text-slate-400 text-sm font-semibold uppercase tracking-wider">Total Requests</span>
                     <span id="stat-total" class="text-4xl font-extrabold mt-2 text-white">0</span>
@@ -50,6 +51,22 @@
                 <div class="glass-card rounded-2xl p-6 flex flex-col">
                     <span class="text-slate-400 text-sm font-semibold uppercase tracking-wider">Active Concurrency</span>
                     <span id="stat-concurrency" class="text-4xl font-extrabold mt-2 text-purple-400">0</span>
+                </div>
+                <div class="glass-card rounded-2xl p-6 flex flex-col">
+                    <span class="text-slate-400 text-sm font-semibold uppercase tracking-wider">WS Connections</span>
+                    <span id="stat-ws-active" class="text-4xl font-extrabold mt-2 text-cyan-400">0</span>
+                </div>
+                <div class="glass-card rounded-2xl p-6 flex flex-col">
+                    <span class="text-slate-400 text-sm font-semibold uppercase tracking-wider">WS Delivered</span>
+                    <span id="stat-ws-delivered" class="text-4xl font-extrabold mt-2 text-emerald-400">0</span>
+                </div>
+                <div class="glass-card rounded-2xl p-6 flex flex-col">
+                    <span class="text-slate-400 text-sm font-semibold uppercase tracking-wider">WS Offline</span>
+                    <span id="stat-ws-offline" class="text-4xl font-extrabold mt-2 text-amber-400">0</span>
+                </div>
+                <div class="glass-card rounded-2xl p-6 flex flex-col">
+                    <span class="text-slate-400 text-sm font-semibold uppercase tracking-wider">WS Errors</span>
+                    <span id="stat-ws-errors" class="text-4xl font-extrabold mt-2 text-red-400">0</span>
                 </div>
             </div>
 
@@ -132,6 +149,10 @@
         const statTotal = document.getElementById('stat-total');
         const statLatency = document.getElementById('stat-latency');
         const statConcurrency = document.getElementById('stat-concurrency');
+        const statWsActive = document.getElementById('stat-ws-active');
+        const statWsDelivered = document.getElementById('stat-ws-delivered');
+        const statWsOffline = document.getElementById('stat-ws-offline');
+        const statWsErrors = document.getElementById('stat-ws-errors');
         const terminal = document.getElementById('terminal');
         const logCount = document.getElementById('log-count');
         
@@ -148,6 +169,10 @@
             statTotal.innerText = data.metrics.total_requests;
             statConcurrency.innerText = data.metrics.active_concurrency;
             statLatency.innerText = Math.round(data.metrics.avg_latency_ms);
+            statWsActive.innerText = data.metrics.active_ws_connections ?? 0;
+            statWsDelivered.innerText = data.metrics.ws_messages_delivered ?? 0;
+            statWsOffline.innerText = data.metrics.ws_messages_offline ?? 0;
+            statWsErrors.innerText = data.metrics.ws_errors ?? 0;
 
             // Update Method Chart
             methodChart.data.datasets[0].data = [
@@ -200,6 +225,39 @@
                 }
                 
                 // Auto scroll to bottom
+                terminal.scrollTop = terminal.scrollHeight;
+            }
+
+            if (data.ws_event) {
+                if (logsCount === 0) terminal.innerHTML = '';
+
+                const logEntry = document.createElement('div');
+                const isError = data.ws_event.event === 'error';
+                const isOffline = data.ws_event.event === 'message_offline';
+                const colorClass = isError ? 'log-error' : (isOffline ? 'text-amber-300' : 'log-ws');
+
+                logEntry.className = `py-1 border-b border-slate-800/50 ${colorClass}`;
+                logEntry.innerHTML = `
+                    <div class="flex justify-between gap-3">
+                        <span>
+                            <span class="font-bold mr-2 text-white">[WS:${data.ws_event.event}]</span>
+                            ${data.ws_event.detail}
+                        </span>
+                        <span class="text-slate-400">${new Date().toLocaleTimeString()}</span>
+                    </div>
+                    <div class="text-xs text-slate-500 mt-1">
+                        user=${data.ws_event.user_id ?? '-'} peer=${data.ws_event.peer_id ?? '-'} msg=${data.ws_event.message_id ?? '-'}
+                    </div>
+                `;
+
+                terminal.appendChild(logEntry);
+                logsCount++;
+                logCount.innerText = `${logsCount} events`;
+
+                if (terminal.childNodes.length > maxLogs) {
+                    terminal.removeChild(terminal.firstChild);
+                }
+
                 terminal.scrollTop = terminal.scrollHeight;
             }
         };

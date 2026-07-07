@@ -1,19 +1,25 @@
 mod api;
 mod models;
-mod utils;
 mod repositories;
 mod services;
-use axum::{routing::{get, post, put, delete}, Router, response::IntoResponse};
+mod utils;
+use axum::{
+    response::IntoResponse,
+    routing::{delete, get, post, put},
+    Router,
+};
 use sqlx::postgres::PgPoolOptions;
 use std::env;
 use std::net::SocketAddr;
+use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load environment variables
     dotenvy::dotenv().ok();
-    
+
     // Initialize tracing
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
@@ -24,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env");
 
     println!("Connecting to Supabase PostgreSQL...");
-    
+
     // Set up connection pool
     let pool = PgPoolOptions::new()
         .max_connections(20)
@@ -40,7 +46,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Successfully connected to Supabase PostgreSQL!");
 
     // Setup AppState for Chat
-    let chat_state: api::chat::ChatState = std::sync::Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new()));
+    let chat_state: api::chat::ChatState =
+        std::sync::Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new()));
     let app_state = api::chat::AppState {
         pool: pool.clone(),
         chat_state,
@@ -56,8 +63,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Build our application with routes
     let app = Router::new()
         // Dashboard
-        .route("/", get(|| async { axum::response::Html(include_str!("dashboard.html")) }))
-        .route("/api/analytics/stream", get(api::analytics::stream_analytics))
+        .route(
+            "/",
+            get(|| async { axum::response::Html(include_str!("dashboard.html")) }),
+        )
+        .route(
+            "/api/analytics/stream",
+            get(api::analytics::stream_analytics),
+        )
         // Auth Routes
         .route("/api/auth/register", post(api::auth::register))
         .route("/api/auth/login", post(api::auth::login))
@@ -67,30 +80,61 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Todo Routes
         .route("/api/todos/user/:user_id", get(api::todos::get_todos))
         .route("/api/todos", post(api::todos::create_todo))
-        .route("/api/todos/:id", put(api::todos::update_todo).patch(api::todos::toggle_todo).delete(api::todos::delete_todo))
+        .route(
+            "/api/todos/:id",
+            put(api::todos::update_todo)
+                .patch(api::todos::toggle_todo)
+                .delete(api::todos::delete_todo),
+        )
         // Habit Routes
         .route("/api/habits/user/:user_id", get(api::habits::get_habits))
         .route("/api/habits", post(api::habits::create_habit))
-        .route("/api/habits/:id", put(api::habits::update_habit).patch(api::habits::toggle_habit).delete(api::habits::delete_habit))
+        .route(
+            "/api/habits/:id",
+            put(api::habits::update_habit)
+                .patch(api::habits::toggle_habit)
+                .delete(api::habits::delete_habit),
+        )
         .route("/api/habits/:id/logs", get(api::habits::get_habit_logs))
         .route("/api/habits/logs", post(api::habits::add_habit_log))
         // Transaction Routes
-        .route("/api/transactions/user/:user_id", get(api::transactions::get_transactions))
-        .route("/api/transactions", post(api::transactions::create_transaction))
-        .route("/api/transactions/:id", delete(api::transactions::delete_transaction))
+        .route(
+            "/api/transactions/user/:user_id",
+            get(api::transactions::get_transactions),
+        )
+        .route(
+            "/api/transactions",
+            post(api::transactions::create_transaction),
+        )
+        .route(
+            "/api/transactions/:id",
+            delete(api::transactions::delete_transaction),
+        )
         // Note Routes
         .route("/api/notes/user/:user_id", get(api::notes::get_notes))
         .route("/api/notes", post(api::notes::create_note))
-        .route("/api/notes/:id", put(api::notes::update_note).delete(api::notes::delete_note))
+        .route(
+            "/api/notes/:id",
+            put(api::notes::update_note).delete(api::notes::delete_note),
+        )
         // Focus Routes
-        .route("/api/focus", get(api::focus::get_focus_sessions).post(api::focus::create_focus_session))
+        .route(
+            "/api/focus",
+            get(api::focus::get_focus_sessions).post(api::focus::create_focus_session),
+        )
         // Chat Routes
         .route("/api/friends", post(api::chat::add_friend))
         .route("/api/friends/accept", post(api::chat::accept_friend))
         .route("/api/friends/:id", get(api::chat::get_friends))
         .route("/api/friends/search/:code", get(api::chat::search_friend))
-        .route("/api/chat/history/:user1/:user2", get(api::chat::get_chat_history).delete(api::chat::delete_chat_history))
-        .route("/api/chat/message/:id", delete(api::chat::delete_single_message))
+        .route(
+            "/api/chat/history/:user1/:user2",
+            get(api::chat::get_chat_history).delete(api::chat::delete_chat_history),
+        )
+        .route(
+            "/api/chat/message/:id",
+            delete(api::chat::delete_single_message),
+        )
         .route("/api/ws/chat/:user_id", get(api::chat::ws_handler))
         .nest("/api/affinity", api::affinity::router())
         // Avatars Routes
@@ -99,52 +143,102 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/upload", post(api::upload::upload_file))
         .route("/api/files/:id", get(api::upload::get_file))
         // Gamification Routes
-        .route("/api/gamification/profile/:user_id", get(api::gamification::get_profile))
-        .route("/api/gamification/shop/buy-freeze/:user_id", post(api::gamification::buy_freeze_ticket))
-        .route("/api/gamification/border/:tier", get(api::gamification::get_border))
+        .route(
+            "/api/gamification/profile/:user_id",
+            get(api::gamification::get_profile),
+        )
+        .route(
+            "/api/gamification/shop/buy-freeze/:user_id",
+            post(api::gamification::buy_freeze_ticket),
+        )
+        .route(
+            "/api/gamification/border/:tier",
+            get(api::gamification::get_border),
+        )
         // Social Routes
         .route("/api/social/feed", get(api::social::get_feed))
         .route("/api/social/leaderboard", get(api::social::get_leaderboard))
         .route("/api/social/activity", post(api::social::create_activity))
         // Weekly Planner Routes
-        .route("/api/weekly/user/:user_id", get(api::weekly::get_weekly_tasks))
+        .route(
+            "/api/weekly/user/:user_id",
+            get(api::weekly::get_weekly_tasks),
+        )
         .route("/api/weekly", post(api::weekly::create_weekly_task))
-        .route("/api/weekly/:id", put(api::weekly::toggle_weekly_task).delete(api::weekly::delete_weekly_task))
+        .route(
+            "/api/weekly/:id",
+            put(api::weekly::toggle_weekly_task).delete(api::weekly::delete_weekly_task),
+        )
         // Shop Routes
         .route("/api/shop/items", get(api::shop::get_shop_items))
-        .route("/api/shop/inventory/:user_id", get(api::shop::get_inventory))
+        .route(
+            "/api/shop/inventory/:user_id",
+            get(api::shop::get_inventory),
+        )
         .route("/api/shop/buy", post(api::shop::buy_item))
         .route("/api/shop/equip/:inventory_id", post(api::shop::equip_item))
-        
         // Quests Routes
-        .route("/api/quests/daily/:user_id", get(api::quests::get_daily_quests))
-        .route("/api/quests/claim/:id", post(api::quests::claim_quest_reward))
-        
+        .route(
+            "/api/quests/daily/:user_id",
+            get(api::quests::get_daily_quests),
+        )
+        .route(
+            "/api/quests/claim/:id",
+            post(api::quests::claim_quest_reward),
+        )
         // Squads Routes
         .route("/api/squads", post(api::squads::create_squad))
-        .route("/api/squads/:id/leaderboard", get(api::squads::get_squad_leaderboard))
-        
+        .route(
+            "/api/squads/:id/leaderboard",
+            get(api::squads::get_squad_leaderboard),
+        )
         // Badges Routes
-        .route("/api/badges/user/:user_id", get(api::badges::get_user_badges))
+        .route(
+            "/api/badges/user/:user_id",
+            get(api::badges::get_user_badges),
+        )
         // Serve static assets from src/Assets
-        .route("/api/assets/:filename", get(|axum::extract::Path(filename): axum::extract::Path<String>| async move {
-            let path = format!("src/Assets/{}", filename);
-            match tokio::fs::read(&path).await {
-                Ok(bytes) => {
-                    let mut headers = axum::http::HeaderMap::new();
-                    let ct = if filename.ends_with(".gif") { "image/gif" } else if filename.ends_with(".png") { "image/png" } else { "application/octet-stream" };
-                    headers.insert(axum::http::header::CONTENT_TYPE, ct.parse().unwrap());
-                    headers.insert(axum::http::header::CACHE_CONTROL, "public, max-age=86400".parse().unwrap());
-                    (axum::http::StatusCode::OK, headers, bytes).into_response()
+        .route(
+            "/api/assets/:filename",
+            get(
+                |axum::extract::Path(filename): axum::extract::Path<String>| async move {
+                    let path = format!("src/Assets/{}", filename);
+                    match tokio::fs::read(&path).await {
+                        Ok(bytes) => {
+                            let mut headers = axum::http::HeaderMap::new();
+                            let ct = if filename.ends_with(".gif") {
+                                "image/gif"
+                            } else if filename.ends_with(".png") {
+                                "image/png"
+                            } else {
+                                "application/octet-stream"
+                            };
+                            headers.insert(axum::http::header::CONTENT_TYPE, ct.parse().unwrap());
+                            headers.insert(
+                                axum::http::header::CACHE_CONTROL,
+                                "public, max-age=86400".parse().unwrap(),
+                            );
+                            (axum::http::StatusCode::OK, headers, bytes).into_response()
+                        }
+                        Err(_) => {
+                            (axum::http::StatusCode::NOT_FOUND, "Asset not found").into_response()
+                        }
+                    }
                 },
-                Err(_) => (axum::http::StatusCode::NOT_FOUND, "Asset not found").into_response(),
-            }
-        }))
+            ),
+        )
         // KPI Analytics Route
         .route("/api/analytics/kpi/:user_id", get(api::analytics::get_kpi))
         .layer(cors)
-        .layer(tower_http::trace::TraceLayer::new_for_http())
-        .layer(axum::middleware::from_fn(api::analytics::analytics_middleware))
+        // TraceLayer: logs every HTTP request/response at the INFO level.
+        // Requires RUST_LOG=tower_http=debug for verbose per-request tracing.
+        .layer(TraceLayer::new_for_http())
+        // CompressionLayer: automatically compresses responses with gzip when
+        // the client sends `Accept-Encoding: gzip`. Reduces payload size on mobile.
+        .layer(CompressionLayer::new())
+        .layer(axum::middleware::from_fn(
+            api::analytics::analytics_middleware,
+        ))
         .layer(axum::extract::DefaultBodyLimit::max(20 * 1024 * 1024))
         .layer(axum::Extension(app_state.analytics_state.clone()))
         .with_state(app_state);
@@ -157,7 +251,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     println!("🚀 Server listening on http://0.0.0.0:{}", port);
-    
+
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 

@@ -5,11 +5,11 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::api::chat::AppState;
+use crate::api::chat::{send_ws_to_user, AppState};
 use crate::models::affinity::{
     AffinityConnection, AffinityInteractReq, AffinityRequestReq, AffinityRespondReq,
 };
@@ -60,7 +60,7 @@ pub async fn request_affinity(
     let sender_ok = check_affinity_limit(&state.pool, req.requester_id, &req.affinity_type)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     let receiver_ok = check_affinity_limit(&state.pool, req.receiver_id, &req.affinity_type)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -89,7 +89,10 @@ pub async fn request_affinity(
     .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     if result.is_none() {
-        return Err((StatusCode::CONFLICT, "Affinity connection already exists".to_string()));
+        return Err((
+            StatusCode::CONFLICT,
+            "Affinity connection already exists".to_string(),
+        ));
     }
 
     // 3. Send Real-time WS Notification
@@ -101,10 +104,7 @@ pub async fn request_affinity(
         message_type: "affinity_request".to_string(),
     };
 
-    let chat_state = state.chat_state.lock().await;
-    if let Some(tx) = chat_state.get(&req.receiver_id.to_string()) {
-        let _ = tx.send(ws_msg);
-    }
+    let _ = send_ws_to_user(&state.chat_state, &req.receiver_id.to_string(), ws_msg).await;
 
     Ok((StatusCode::OK, "Affinity request sent".to_string()))
 }
@@ -117,7 +117,7 @@ pub async fn respond_affinity(
     if req.status == "accepted" {
         // Double check limits before accepting
         let conn = sqlx::query_as::<_, AffinityConnection>(
-            "SELECT * FROM affinity_connections WHERE id = $1 AND status = 'pending'"
+            "SELECT * FROM affinity_connections WHERE id = $1 AND status = 'pending'",
         )
         .bind(id)
         .fetch_optional(&state.pool)
@@ -139,26 +139,25 @@ pub async fn respond_affinity(
                 ));
             }
         } else {
-            return Err((StatusCode::NOT_FOUND, "Pending request not found".to_string()));
+            return Err((
+                StatusCode::NOT_FOUND,
+                "Pending request not found".to_string(),
+            ));
         }
 
-        let _ = sqlx::query(
-            "UPDATE affinity_connections SET status = 'accepted' WHERE id = $1",
-        )
-        .bind(id)
-        .execute(&state.pool)
-        .await
-        .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        let _ = sqlx::query("UPDATE affinity_connections SET status = 'accepted' WHERE id = $1")
+            .bind(id)
+            .execute(&state.pool)
+            .await
+            .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
         Ok((StatusCode::OK, "Affinity accepted".to_string()))
     } else {
-        let _ = sqlx::query(
-            "DELETE FROM affinity_connections WHERE id = $1",
-        )
-        .bind(id)
-        .execute(&state.pool)
-        .await
-        .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        let _ = sqlx::query("DELETE FROM affinity_connections WHERE id = $1")
+            .bind(id)
+            .execute(&state.pool)
+            .await
+            .map_err(|e: sqlx::Error| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
         Ok((StatusCode::OK, "Affinity rejected".to_string()))
     }
@@ -190,7 +189,7 @@ pub async fn get_user_affinities(
         LEFT JOIN users u ON u.id = a.requester_id
         WHERE a.requester_id = $1 OR a.receiver_id = $1
         ORDER BY a.created_at DESC
-        "#
+        "#,
     )
     .bind(user_id)
     .fetch_all(&state.pool)
@@ -213,10 +212,7 @@ pub async fn interact_affinity(
         message_type: "affinity_interaction".to_string(),
     };
 
-    let chat_state = state.chat_state.lock().await;
-    if let Some(tx) = chat_state.get(&req.receiver_id.to_string()) {
-        let _ = tx.send(ws_msg);
-    }
+    let _ = send_ws_to_user(&state.chat_state, &req.receiver_id.to_string(), ws_msg).await;
 
     Ok((StatusCode::OK, "Interaction sent".to_string()))
 }

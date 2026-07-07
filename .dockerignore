@@ -1,0 +1,22 @@
+# Keep local environment secrets out of Docker build contexts.
+.env
+.env.*
+!.env.example
+
+# Exclude Rust build output; Docker uses its own cached build layers/volumes.
+target/
+debug/
+
+# Exclude git and editor metadata to reduce context size.
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Exclude OS-specific junk files.
+.DS_Store
+Thumbs.db
+
+# Exclude transient logs and backup files.
+*.log
+*.rs.bk

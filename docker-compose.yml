@@ -1,0 +1,98 @@
+name: mobile-productivity-backend
+
+# ============================================================
+# NETWORKS: private bridge so API can reach PostgreSQL by name
+# ============================================================
+networks:
+  backend_net:
+    driver: bridge
+
+# ============================================================
+# VOLUMES: persisted DB data and cached Rust build artifacts
+# ============================================================
+volumes:
+  pgdata:          # PostgreSQL data persists after containers stop.
+  cargo_registry:  # Cargo crate downloads are cached between runs.
+  cargo_git:       # Cargo git dependencies are cached between runs.
+  target_cache:    # Rust build output stays in a Linux volume, faster than Windows bind mount.
+
+# ============================================================
+# SERVICES
+# ============================================================
+services:
+  # ----------------------------------------------------------
+  # DATABASE: PostgreSQL for local development
+  # ----------------------------------------------------------
+  db:
+    image: postgres:16-alpine       # Alpine image keeps the database container small.
+    container_name: mobileproductivity_db
+    restart: unless-stopped         # Restart automatically unless stopped manually.
+
+    environment:
+      POSTGRES_DB: ${DB_NAME:-mobile_productivity}          # Initial database name.
+      POSTGRES_USER: ${DB_USER:-postgres}                   # Database username.
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-yourpassword}       # Database password from .env or fallback.
+
+    ports:
+      - "5432:5432"                 # Expose Postgres on localhost for tools like DBeaver/pgAdmin.
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data  # Store database files in a named persistent volume.
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s                 # Check database readiness every 10 seconds.
+      timeout: 5s                   # Treat a check as failed after 5 seconds.
+      retries: 5                    # Wait through a few startup attempts before failing.
+      start_period: 10s             # Give Postgres time to initialize on first boot.
+
+    networks:
+      - backend_net                 # Attach DB to the private backend network.
+
+  # ----------------------------------------------------------
+  # API: Rust/Axum backend with hot-reload for development
+  # ----------------------------------------------------------
+  api:
+    build:
+      context: .                    # Build from the backend directory.
+      dockerfile: Dockerfile        # Use the backend Dockerfile.
+      target: development           # Use dev image with cargo-watch and sqlx-cli.
+
+    container_name: mobileproductivity_api
+    restart: unless-stopped
+
+    ports:
+      - "8080:8080"                 # Make API reachable from host at http://localhost:8080.
+
+    env_file:
+      - .env                        # Load local app secrets/settings; environment below overrides DB URL.
+
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-yourpassword}@db:5432/${DB_NAME:-mobile_productivity}
+      PORT: ${PORT:-8080}           # Port read by src/main.rs.
+      RUST_LOG: ${RUST_LOG:-info}   # Default log verbosity.
+
+    depends_on:
+      db:
+        condition: service_healthy  # Start API only after Postgres is accepting connections.
+
+    volumes:
+      - .:/app                      # Bind-mount source for hot-reload while editing locally.
+      - cargo_registry:/usr/local/cargo/registry  # Persist downloaded crates.
+      - cargo_git:/usr/local/cargo/git            # Persist git-based crates.
+      - target_cache:/app/target    # Keep compiled artifacts out of the Windows project folder.
+
+    command:
+      - sh
+      - -c
+      - sqlx database setup && cargo watch --why -w src -w migrations -w Cargo.toml -x 'run --bin backend'
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/api/system/health || exit 1"]
+      interval: 30s                 # Check API health every 30 seconds.
+      timeout: 10s                  # Fail an individual health probe after 10 seconds.
+      retries: 3                    # Mark unhealthy after 3 failed checks.
+      start_period: 120s            # First Rust compile can take time in a fresh container.
+
+    networks:
+      - backend_net                 # Attach API to the same network as the DB.

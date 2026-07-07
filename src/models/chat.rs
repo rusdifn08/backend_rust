@@ -1,6 +1,6 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Friend {
@@ -34,7 +34,7 @@ pub struct AcceptFriendReq {
     pub requester_id: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WsMessage {
     pub id: String,
     pub sender_id: String,
